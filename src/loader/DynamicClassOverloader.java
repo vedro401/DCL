@@ -6,13 +6,12 @@ public class DynamicClassOverloader extends ClassLoader
 {
     private java.util.Map classesHash= new java.util.HashMap();
     public final String[] classPath;
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     public DynamicClassOverloader(String[] classPath)
     {
-        // Набор путей поиска - аналог переменной CLASSPATH
         this.classPath= classPath;
     }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     protected synchronized Class loadClass(String name,boolean resolve) throws ClassNotFoundException
     {
         Class result= findClass(name);
@@ -20,29 +19,18 @@ public class DynamicClassOverloader extends ClassLoader
             resolveClass(result);
         return result;
     }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     protected Class findClass(String name) throws ClassNotFoundException
     {
         Class result= (Class)classesHash.get(name);
         if (result!=null) {
-            /*
-             * System.out.println("% Class "+name+" found in cache");
-            */
+
             return result;
         }
 
         File f= findFile(name.replace('.','/'),".class");
-        // Класс mypackage.MyClass следует искать файле mypackage/MyClass.class
-        /*
-         * System.out.println("% Class "+name+(f==null?"":" found in "+f));
-        */
+
         if (f==null) {
-            // Обращаемся к системному загрузчику в случае неудачи. findSystemClass – это метод абстрактного класса
-            // ClassLoader с объявлением protected final Class findSystemClass(String name) (т.е. предназначенный
-            // для использования в наследниках и не подлежащий переопределению). Он выполняет поиск и загрузку класса
-            // по алгоритму системного загрузчика. Без вызова findSystemClass(name) нам пришлось бы самостоятельно
-            // позаботиться о загрузке всех стандартных библиотечных классов типа java.lang.String, что потребовало бы
-            // реализовать работу с JAR-архивами (стандартные библиотеки почти всегда упакованы в JAR)
+
             return findSystemClass(name);
         }
         try {
@@ -54,10 +42,9 @@ public class DynamicClassOverloader extends ClassLoader
             throw new ClassNotFoundException("Format of class file incorrect for class "+name+": "+e);
         }
 
-//        classesHash.put(name,result);
         return result;
     }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     protected java.net.URL findResource(String name)
     {
         File f= findFile(name, "");
@@ -69,13 +56,7 @@ public class DynamicClassOverloader extends ClassLoader
             return null;
         }
     }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    /**
-     * Поиск файла с именем name и, возможно, расширением extension в каталогах поиска, заданных параметром
-     * конструктора classPath. Имена подкаталогов в name разделяются символом '/' – даже если в операционной
-     * системе принят другой разделитель для подкаталогов. (Именно в таком виде получает свой параметр метод
-     * findResource.)
-     */
+
     private File findFile(String name, String extension)
     {
         for (int k=0; k <classPath.length; k++) {
@@ -86,7 +67,7 @@ public class DynamicClassOverloader extends ClassLoader
         }
         return null;
     }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     public static byte[] loadFileAsBytes(File file) throws IOException
     {
         byte[] result = new byte[(int)file.length()];
@@ -97,12 +78,10 @@ public class DynamicClassOverloader extends ClassLoader
             try {
                 f.close();
             } catch (Exception e) {
-                // Игнорируем исключения, возникшие при вызове close. Они крайне маловероятны и не очень
-                // важны - файл уже прочитан. Но если они все же возникнут, то они не должны замаскировать
-                // действительно важные ошибки, возникшие при вызове read.
-            };
+
+            }
         }
         return result;
     }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 }
