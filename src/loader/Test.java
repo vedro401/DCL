@@ -28,7 +28,7 @@ public class Test
             addPath = br.readLine();
             path[0] ="ClassesHolder/pocket" + addPath;
             ClassLoader loader = new DynamicClassOverloader(path);
-            clazz = loader.loadClass("TestModule");
+            clazz = loader.loadClass("res.TestModule");
             Object object = clazz.newInstance();
             System.out.println(path[0]);
 

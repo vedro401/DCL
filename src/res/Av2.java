@@ -1,3 +1,5 @@
+package res;
+
 /**
  * Created by someone on 19.03.17.
  */
