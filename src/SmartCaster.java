@@ -16,6 +16,13 @@ public class SmartCaster{
         modules.put("booleanjava.lang.String", new BooleanStringCM());
     }
 
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        SmartCaster clone = new SmartCaster();
+        clone.modules = (HashMap<String, ConverterModule>) this.modules.clone();
+        return clone;
+    }
+
     public Object transformBySpecialConverter(Object inputDate, Class resultType, String converterName) throws TransformFailedException {
         for(Map.Entry<String,ConverterModule> entry: modules.entrySet()){
             if(entry.getValue().getClass().getName().equals(converterName)){
@@ -116,6 +123,9 @@ public class SmartCaster{
       Method cmTransform = module.getClass().getMethods()[0];
       modules.put(cmTransform.getParameterTypes()[0].getName() + cmTransform.getReturnType().getName(),module);
   }
+//  public void addConverterModule(ConverterModule module, Class inputClass, Class resultClass){
+//      modules.put()
+//  }
 
     public void addConverterModule(ConverterModule module, String name){
         modules.put(name,module);

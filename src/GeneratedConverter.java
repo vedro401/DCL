@@ -45,7 +45,12 @@ public class GeneratedConverter implements ConverterModule {
             try {
                 Constructor c = resultClass.getDeclaredConstructors()[0];
                 c.setAccessible(true);
-                newO = c.newInstance(smartCaster.customer);
+//                Class cc = smartCaster.customer.getClass();
+                try {
+                    newO = c.newInstance(smartCaster.customer);
+                } catch (IllegalArgumentException ee){
+                    System.out.println();
+                }
             } catch (InstantiationException e1) {
                 e1.printStackTrace();
             } catch (IllegalAccessException e1) {
@@ -60,8 +65,9 @@ public class GeneratedConverter implements ConverterModule {
         smartCaster.customer = newO;
         for(Map.Entry<Field,Field>  entry: fieldPairs.entrySet()){
             try {
-                Object newValue = smartCaster.transform(entry.getKey().get(i), entry.getValue().getType());
-                Class classs = newO.getClass();
+                Object newValue = smartCaster.transform(
+                        entry.getKey().get(i),
+                        entry.getValue().getType());
                 entry.getValue().set(newO, newValue);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();

@@ -17,14 +17,21 @@ public class Process {
 
     public void startTest() throws IllegalAccessException, InstantiationException, ClassNotFoundException, WrongFormatException, IOException, NoSuchFieldException {
         String [] path = new String[] {"/home/someone/IdeaProjects/DCL/ClassesHolder/pocket1"};
+
+        String testModuleName = "EzTestModule";
+//        String testModuleName = "HareModule";
+
         ClassLoader loader = new DynamicClassOverloader(path);
-        Class clazz = loader.loadClass("EzTestModule");
+        Class clazz = loader.loadClass(testModuleName);
+//
 
 
         Scanner scanner = new Scanner(System.in);
         Scanner scanner2 = new Scanner(System.in);
         int count;
         boolean flag = true;
+        System.out.println("Process started");
+
         while (flag){
             switch (scanner.nextLine()){
                 case "more":
@@ -33,12 +40,11 @@ public class Process {
                     for (int i = 0; i < count; i++) {
                         mainArrayList.add(clazz.newInstance());
                     }
-                    System.out.println("Now there are " +  mainArrayList.size() + "objects");
+                    System.out.println("Now there are " +  mainArrayList.size() + " objects");
                     break;
                 case "reload":
-
                     reloadClass("/home/someone/IdeaProjects/DCL/ClassesHolder/pocket2",
-                            "EzTestModule",
+                            testModuleName,
                             "/home/someone/IdeaProjects/DCL/Descriptions/Void.txt",
                             "/home/someone/IdeaProjects/DCL/Descriptions/Void.txt",
                             null, new String[]{"SpecialConverter"});
@@ -49,6 +55,15 @@ public class Process {
                     break;
                 case "exit":
                     flag = false;
+                    break;
+                case "check":
+                    for (int i = 0; i < mainArrayList.size(); i++) {
+                        if(mainArrayList.get(i) == null){
+                            System.out.println("element " + i + " is null. Bastard!");
+                        }
+                    }
+                    System.out.println("checked");
+                    break;
                 default:
                     System.out.println("What?");
             }
@@ -96,7 +111,7 @@ public class Process {
     public void reloadClass(String classPath, String className,
                             String fieldsDescriptionPaths, String fieldConverterDependencyPaths,
                             String converterModulesPath, String[] converterModulesNames) throws IllegalAccessException, InstantiationException, ClassNotFoundException, WrongFormatException, NoSuchFieldException, IOException {
-        prepareComverterModules(converterModulesPath,converterModulesNames);
+        prepareConverterModules(converterModulesPath,converterModulesNames);
         long time = System.currentTimeMillis();
         HashMap<String,HashMap<String,Pair<String,String>>> fieldsDescriptionMaps = getFieldsDescriptionMaps(fieldsDescriptionPaths);
 
@@ -113,8 +128,8 @@ public class Process {
                 GeneratedConverter generatedConverter =
                         new GeneratedConverter(fieldsDescriptionMaps,fieldConverterDependencyMap,
                                 oldClazz,clazz,smartCaster);
-                smartCaster.addConverterModule(generatedConverter,
-                        oldClazz.getName() + clazz.getName());
+                smartCaster.addConverterModule(generatedConverter);
+                smartCaster.addConverterModule(generatedConverter, oldClazz.getName() + clazz.getName());
                 break;
             }
         }
@@ -130,9 +145,12 @@ public class Process {
         System.out.println();
 //        long lastTime = System.currentTimeMillis();
         long clearStartTime = System.currentTimeMillis();
+        Class oc;
+        Object o;
         for (int j = 0; j < mainArrayList.size() ; j++) {
-            Object o = mainArrayList.get(j);
-            if(o.getClass().getName().equals(clazz.getName())) {
+            o = mainArrayList.get(j);
+            oc = o.getClass();
+            if(oc.getName().equals(clazz.getName()) && !oc.getClassLoader().equals(clazz.getClassLoader())) {
                 try {
                     Object newO = smartCaster.transform(o,clazz);
                     mainArrayList.remove(j);
@@ -150,8 +168,131 @@ public class Process {
                 c += pc;
             }
         }
+        smartCaster = new SmartCaster();
         System.out.println();
         System.out.println("\nDone in " + (System.currentTimeMillis() - time) + "\n");
+        outStatistic(forEachTime,clearStartTime);
+
+    }
+
+    public void reloadClassMultiThread(String classPath, String className,
+                            String fieldsDescriptionPaths, String fieldConverterDependencyPaths,
+                            String converterModulesPath, String[] converterModulesNames) throws IllegalAccessException, InstantiationException, ClassNotFoundException, WrongFormatException, NoSuchFieldException, IOException {
+        prepareConverterModules(converterModulesPath,converterModulesNames);
+        long time = System.currentTimeMillis();
+        HashMap<String,HashMap<String,Pair<String,String>>> fieldsDescriptionMaps = getFieldsDescriptionMaps(fieldsDescriptionPaths);
+
+
+//        HashMap fieldsDescriptionMap = getFieldsDescriptionMaps(fieldsDescriptionPaths);
+        HashMap fieldConverterDependencyMap = getFieldConverterDependencyMap(fieldConverterDependencyPaths);
+//            reloadClass(classPath,className, fieldsDescriptionMaps, fieldConverterDependencyMap);
+        ClassLoader loader = new DynamicClassOverloader(new String[]{classPath});
+        Class clazz = loader.loadClass(className);
+        Class oldClazz = null;
+        for(Object o: mainArrayList) {
+            if (o.getClass().getName().equals(clazz.getName())) {
+                oldClazz = o.getClass();
+                GeneratedConverter generatedConverter =
+                        new GeneratedConverter(fieldsDescriptionMaps,fieldConverterDependencyMap,
+                                oldClazz,clazz,smartCaster);
+                smartCaster.addConverterModule(generatedConverter, oldClazz.getName() + clazz.getName());
+                break;
+            }
+        }
+        if(oldClazz == null){
+            return;
+        }
+
+        long[] forEachTime = new long[mainArrayList.size()];
+        for (int i = 0; i < 10; i++) {
+            System.out.print(".........!");
+        }
+        System.out.println();
+//        long lastTime = System.currentTimeMillis();
+        long clearStartTime = System.currentTimeMillis();
+
+        int procNum = Runtime.getRuntime().availableProcessors();
+
+        ExecutingThread[] threads = new ExecutingThread[procNum];
+        int h = mainArrayList.size()/procNum;
+
+        for (int j = 0; j < procNum; j++) {
+            if(j+1 >= procNum){
+                threads[j] = new ExecutingThread(j * h, mainArrayList.size(), clazz, smartCaster,j);
+                threads[j].start();
+            } else {
+                threads[j] = new ExecutingThread(j * h, (j + 1) * h, clazz, smartCaster,j);
+                threads[j].start();
+            }
+        }
+        for (int j = 0; j < Runtime.getRuntime().availableProcessors() ; j++) {
+            try {
+                threads[j].join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        smartCaster = new SmartCaster();
+        System.out.println();
+        System.out.println("\nDone in " + (System.currentTimeMillis() - time) + "\n");
+//        outStatistic(forEachTime,clearStartTime);
+
+    }
+
+    private class ExecutingThread extends Thread{
+        int start, end;
+        Class clazz;
+        SmartCaster smartCaster;
+        int num;
+
+        public ExecutingThread(int start, int end, Class clazz, SmartCaster smartCaster, int num) {
+            this.start = start;
+            this.end = end;
+            this.clazz = clazz;
+            this.num = num;
+            try {
+                this.smartCaster = (SmartCaster) smartCaster.clone();
+            } catch (CloneNotSupportedException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        @Override
+        public void run() {
+            Class oc;
+            Object o;
+            int pc = mainArrayList.size()/100;
+            int c = start + pc;
+            for (int j = start; j < end; j++) {
+                o = mainArrayList.get(j);
+                oc = o.getClass();
+                if(oc.getName().equals(clazz.getName()) && !oc.getClassLoader().equals(clazz.getClassLoader())) {
+                    try {
+                        Object newO = smartCaster.transform(o,clazz);
+//                        mainArrayList.remove(j);
+                        mainArrayList.add(j,newO);
+                    } catch (SmartCaster.TransformFailedException e) {
+                        e.printStackTrace();
+                        return;
+                    }
+                }
+//                forEachTime[j] = System.currentTimeMillis();
+                if(j >= c-1){
+                    System.out.print(num);
+////                System.out.println(System.currentTimeMillis() - lastTime);
+////                lastTime = System.currentTimeMillis();
+                    c += pc;
+                }
+            }
+
+        }
+    }
+
+
+
+    private void outStatistic(long[] forEachTime, long clearStartTime){
+        int pc = forEachTime.length/100;
         long [] forEachCalcTime = new long[forEachTime.length];
         forEachCalcTime[0] = forEachTime[pc] - clearStartTime;
         for (int i = 1; i < forEachTime.length; i++) {
@@ -169,11 +310,15 @@ public class Process {
             System.out.println("calculation time: " + (forEachTime[i] - forEachTime[i-pc]) );
             System.out.println("time: " + forEachTime[i]);
 //            System.out.println("Average time for one object: " + (forEachTime[i] - forEachTime[i-pc])/pc);
-
             System.out.println("_________________________________________");
         }
-
+        long ll = 0;
+        for(long l: forEachCalcTime){
+            ll += l;
+        }
+        System.out.println("Average time for 100 object: "  + ll/(forEachCalcTime.length/100));
     }
+
 //    public void reloadClass(String classPath, String className,
 //                            String fieldsDescriptionPath, String fieldConverterDependencyPath) throws WrongFormatException, ClassNotFoundException, NoSuchFieldException, InstantiationException, IllegalAccessException, IOException {
 //        HashMap fieldsDescriptionMap = getFieldsDescriptionMaps(fieldsDescriptionPath);
@@ -221,6 +366,9 @@ public class Process {
                 }
             }
         }
+
+
+
         for (int j = 0; j < mainArrayList.size() ; j++) {
             Object o = mainArrayList.get(j);
             try {
@@ -287,7 +435,7 @@ public class Process {
         return fieldsDescriptionMaps;
     }
 
-    private void prepareComverterModules(String converterModulesPath, String[] converterModulesNames) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    private void prepareConverterModules(String converterModulesPath, String[] converterModulesNames) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         if(converterModulesPath == null) {
             return;
         }

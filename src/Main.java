@@ -4,6 +4,7 @@ public class Main {
         Process process = new Process();
         try {
             process.startTest();
+//            process.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
